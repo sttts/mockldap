@@ -95,6 +95,7 @@ class Not(Token):
 class Test(Token):
     TEST_RE = re.compile(r'(.+?)([~<>]?=)(.+)')
     UNESCAPE_RE = re.compile(r'\\([0-9a-f]{2})', flags=re.I)
+    TIME_FORMAT= '%Y%m%d%H%M%SZ'
 
     # Defaults
     attr = None
@@ -115,8 +116,18 @@ class Test(Token):
 
         self.attr, self.op, self.value = match.groups()
 
-        if self.op != '=':
+        if self.op not in ['=', '>=', '<=']:
             raise UnsupportedOp(u"Operation '%s' is not supported" % (self.op,))
+
+        if self.op in ['>=', '<=']:
+            try:
+                int(self.value)
+            except ValueError:
+                try:
+                    import datetime
+                    datetime.datetime.strptime(self.value, self.TIME_FORMAT)
+                except ValueError:
+                    raise UnsupportedOp(u"'%s' must be either integers or a timestamp when comparing" % (self.value,))
 
         if (u'*' in self.value) and (self.value != u'*'):
             raise UnsupportedOp(u"Wildcard matches are not supported in '%s'" % (self.value,))
@@ -130,12 +141,29 @@ class Test(Token):
     def matches(self, dn, attrs):
         values = attrs.get(self.attr)
 
-        if values is None:
-            matches = False
-        elif self.value == u'*':
-            matches = len(values) > 0
-        else:
-            matches = self.value in values
+        if self.op == '=':
+            if values is None:
+                matches = False
+            elif self.value == u'*':
+                matches = len(values) > 0
+            else:
+                matches = self.value in values
+        elif self.op in ['<=', '>=']:
+            if len(values) != 1:
+                matches = False
+            else:
+                try:
+                    lvalue = int(values[0])
+                    rvalue = int(self.value)
+                    matches = lvalue <= rvalue if self.op == '<=' else lvalue >= rvalue
+                except ValueError:
+                    try:
+                        import datetime
+                        lvalue = datetime.datetime.strptime(values[0], self.TIME_FORMAT)
+                        rvalue = datetime.datetime.strptime(self.value, self.TIME_FORMAT)
+                        matches = lvalue <= rvalue if self.op == '<=' else lvalue >= rvalue
+                    except ValueError:
+                        matches = False
 
         return matches
 
