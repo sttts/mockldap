@@ -249,7 +249,7 @@ class LDAPObject(RecordableMethods):
         elif scope == ldap.SCOPE_ONELEVEL:
             dns = (dn for dn, parts in dn_parts.items() if parts[1:] == base_parts)
         elif scope == ldap.SCOPE_SUBTREE:
-            dns = (dn for dn, parts in dn_parts.items() if parts[-base_len:] == base_parts)
+            dns = (dn for dn, parts in dn_parts.items() if parts[-base_len:] == base_parts or base_len == 0)
         else:
             raise ValueError(u"Unrecognized scope: {0}".format(scope))
 
