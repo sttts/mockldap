@@ -149,7 +149,9 @@ class Test(Token):
             else:
                 matches = self.value in values
         elif self.op in ['<=', '>=']:
-            if len(values) != 1:
+            if values is None:
+                matches = False
+            elif len(values) != 1:
                 matches = False
             else:
                 try:
